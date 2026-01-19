@@ -38,7 +38,13 @@ Prepares ASV and pH data for machine learning analyses.
 
 *Machine learning - model building*: **[2025_11_07_ml_redux](https://github.com/pdobrano25/oars/blob/main/2025_11_07_ml_redux.R)**
 
-Builds and evaluates machine learning models, with integration for cloud computing and re-analysis of 8 published studies.
+Builds and evaluates machine learning models, with re-analysis of 8 published studies.
+
+---
+
+*Machine learning - cloud computing*: **[2025_11_05_ml_ph_loocv](https://github.com/pdobrano25/oars/blob/main/2025_11_05_ml_ph_loocv.R)**
+
+Builds and evaluates machine learning models, with integration for cloud computing.
 
 ---
 
