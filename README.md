@@ -1,7 +1,7 @@
 ***Ex vivo fermentation predicts reduced biochemical inflammation with personalized resistant starch in children with IBD.***
 
 Peter Dobranowski
-Version 2026_01_19
+Version 2026_08_28
 
 ---
 
@@ -22,7 +22,7 @@ Prepares FFQ data (with minimal analyses), 16S data variables (e.g. butyrogens, 
 
 ---
 
-*Main analyses*: **[2026_01_15_oars_dna_processing](https://github.com/pdobrano25/oars/blob/main/2026_01_15_oars_analysis.R)**
+*Main analyses*: **[2026_05_15_oars_analysis](https://github.com/pdobrano25/oars/blob/main/2026_05_15_oars_analysis.R)**
 
 
 Main analysis including group-level and response-level clinical, ASV, metagenomics, metaproteomics, and metabolomics; conducts conserved- and variable-response analyses, and correlations with fecal calprotectin.
