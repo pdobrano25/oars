@@ -431,18 +431,19 @@ oars.rapidaim.scores.pc = readRDS("./2025_06_09_oars_scores.Rds")
 oars.rapidaim.scores.pc$HMno = substr(oars.rapidaim.scores.pc$HM, 1, 6)
 # factor RS
 oars.rapidaim.scores.pc$RS_Name <- factor(oars.rapidaim.scores.pc$RS_Name, levels=rs.names)
-# factor timing
-oars.rapidaim.scores.pc$timing <- factor(oars.rapidaim.scores.pc$timing, levels=c("0M", "3M", "6M", "12M"))
+# factor timing (not needed if only 0-6 are plotted)
+#oars.rapidaim.scores.pc$timing <- factor(oars.rapidaim.scores.pc$timing, levels=c("0M", "3M", "6M", "12M"))
 
 # :: rs selections --------------------------------------------------
 
-oars.rapidaim.scores.pc.selection.plot <- ggplot(subset(oars.rapidaim.scores.pc, RS_Name != "PBS" & timing %in% c("0M", "3M", "6M"))%>%
-                                                   mutate(Timing = timing),
-                                              #     aes(x=timing, y=log(med.but,base=2)))+
-                                              aes(x=timing, y=Z_score))+
-  
+oars.deid.list <- setNames(oars.deid$code, oars.deid$HM)
+
+oars.rapidaim.scores.pc.selection.plot <- 
+  subset(oars.rapidaim.scores.pc, RS_Name != "PBS" & timing %in% c("0M", "3M", "6M"))%>%
+  #mutate(Timing = as.character(timing)) %>%
+  ggplot(aes(x=timing, y=Z_score))+
   # add vertical bars
-  geom_vline(xintercept=c(1:14), color="black")+
+  geom_vline(xintercept=c(1:3), color="black")+
   # geom_vline(xintercept=4, color="black")+
   # add points
   geom_point(aes(fill=RS_Name), shape=21, size=2, alpha=1)+
@@ -462,7 +463,9 @@ oars.rapidaim.scores.pc.selection.plot <- ggplot(subset(oars.rapidaim.scores.pc,
   scale_fill_manual(values = c(labelcolors$cols[c(1:9)]))+
   theme_minimal()+theme(legend.position="none")+
   labs(x="", y="Butyrogen Z-Score")+
-  facet_wrap(~HMno, nrow=3)+
+  facet_wrap(~HMno, nrow=3,
+             # deid
+             labeller = labeller(HMno = oars.deid.list))+
   theme_minimal()+theme(legend.position="none",
                         strip.text = element_text(size=10),
                         strip.background = element_rect(
@@ -582,58 +585,64 @@ oars.rapidaim.scores.pc.ph.selection.plot+
   patchwork::plot_layout(widths=c(4,1))
 
 
-# >> vignette (819) -------------------------------------------------------------
+# >> vignette (UPDATED HM's) -------------------------------------------------------------
 
 # select 2 microbiomes to illustrate selection algorithm
-# HM0819.03 and HM0819.04 should work
-# NOTE: 819.04 changes after debugging OTU processing;
-# to reproduce figures (from scratch), will need to select different microbiomes
+# HM0899 0M (Scenario A) and HM0639 3M (Scenario B) look like solid examples
 
 # :: Z-scores -------------------------------------------------------------
 
-oars.rapidaim.scores.pc.819 = readRDS("./2025_06_09_oars_scores.Rds")
-oars.rapidaim.scores.pc.819 = subset(oars.rapidaim.scores.pc.819, HM == "HM0819")
-oars.rapidaim.scores.pc.819 = subset(oars.rapidaim.scores.pc.819, timing %in% c("0M" , "3M"))
-oars.rapidaim.scores.pc.819 = subset(oars.rapidaim.scores.pc.819, RS_Name != "PBS")
-oars.rapidaim.scores.pc.819$RS_Name = factor(oars.rapidaim.scores.pc.819$RS_Name, levels=rs.names)
+oars.rapidaim.scores.pc.899 = readRDS("./2025_06_09_oars_scores.Rds")
+oars.rapidaim.scores.pc.899 = subset(oars.rapidaim.scores.pc.899, HM == "HM0899")
+oars.rapidaim.scores.pc.899 = subset(oars.rapidaim.scores.pc.899, timing %in% c("0M"))
+oars.rapidaim.scores.pc.899 = subset(oars.rapidaim.scores.pc.899, RS_Name != "PBS")
+oars.rapidaim.scores.pc.899$RS_Name = factor(oars.rapidaim.scores.pc.899$RS_Name, levels=rs.names)
 
 # create dataframe for labels
-oars.rapidaim.scores.pc.819.1 = subset(oars.rapidaim.scores.pc.819, RS_Name != "PBS" & timing == "0M")
-oars.rapidaim.scores.pc.819.1 = oars.rapidaim.scores.pc.819.1 %>% arrange(-med.but)
-oars.rapidaim.scores.pc.819.1$y.pos = seq(from = max(oars.rapidaim.scores.pc.819.1$med.but), 
-                                       to = min(oars.rapidaim.scores.pc.819.1$med.but),length=9)
+oars.rapidaim.scores.pc.899.1 = subset(oars.rapidaim.scores.pc.899, RS_Name != "PBS" & timing == "0M")
+oars.rapidaim.scores.pc.899.1 = oars.rapidaim.scores.pc.899.1 %>% arrange(-med.but)
+oars.rapidaim.scores.pc.899.1$y.pos = seq(from = 0.07, 
+                                       to = min(oars.rapidaim.scores.pc.899.1$med.but),length=9)
+oars.rapidaim.scores.pc.899.1$y.pos = ifelse(oars.rapidaim.scores.pc.899.1$RS_Name == "LetsDoOrganic", 
+                                             subset(oars.rapidaim.scores.pc.899.1, RS_Name == "LetsDoOrganic")$med.but,
+                                             oars.rapidaim.scores.pc.899.1$y.pos)
+# shift sec_axis calculated values
+scale_factor.899 = max(scale(range(oars.rapidaim.scores.pc.899.1$med.but)))
 
-oars.rapidaim.scores.pc.819.1.selection <- ggplot(subset(oars.rapidaim.scores.pc.819.1, RS_Name != "PBS"),
+oars.rapidaim.scores.pc.899.1.selection <- ggplot(oars.rapidaim.scores.pc.899.1,
                                               #     aes(x=timing, y=log(med.but,base=2)))+
-                                              aes(x=1, y=med.but*100))+
+                                              aes(x=1, y=med.but))+
   # add vertical bars
   geom_vline(xintercept=1, color="black")+
  
   # add label
-  geom_text(data=oars.rapidaim.scores.pc.819.1,
-            x=1.01, aes(y=y.pos*100, label=RS_Name, color=RS_Name), hjust=0)+
-  geom_segment(data=oars.rapidaim.scores.pc.819.1,
-               x=1.0025, xend=1, aes(y=y.pos*100, yend=med.but*100, 
+  geom_text(data=oars.rapidaim.scores.pc.899.1,
+            x=1.01, aes(y=y.pos, label=RS_Name, color=RS_Name), hjust=0)+
+  geom_segment(data=oars.rapidaim.scores.pc.899.1,
+               x=1.0025, xend=1, aes(y=y.pos, yend=med.but, 
                             color=RS_Name))+
-  geom_segment(data=oars.rapidaim.scores.pc.819.1,
-               x=1.0025, xend=1.0095, aes(y=y.pos*100, yend=y.pos*100,
+  geom_segment(data=oars.rapidaim.scores.pc.899.1,
+               x=1.0025, xend=1.0095, aes(y=y.pos, yend=y.pos,
                                     color=RS_Name))+
-  geom_label(data=subset(oars.rapidaim.scores.pc.819.1, RS_Name == selected),
-            x=1.01, aes(y=y.pos*100, label=RS_Name, color=RS_Name), hjust=0)+
+  geom_label(data=subset(oars.rapidaim.scores.pc.899.1, RS_Name == selected),
+            x=1.01, aes(y=y.pos, label=RS_Name, color=RS_Name), hjust=0)+
   # add points
-  geom_point(aes(fill=RS_Name), size=2.5, shape=21)+
-  # add others
-  geom_hline(yintercept=9.18, color="red", linetype=2, alpha=0.5)+
+  geom_point(aes(fill=RS_Name), size=3, shape=21)+
+  # add others (including Z-score = 1)
+  geom_hline(yintercept=(mean(oars.rapidaim.scores.pc.899.1$med.but) + 1 * sd(oars.rapidaim.scores.pc.899.1$med.but)), 
+             color="red", linetype=2, alpha=0.5)+
   scale_fill_manual(values = c(labelcolors$cols[c(1:9)]))+
   scale_color_manual(values = c(labelcolors$cols[c(1:9)]))+
   scale_x_continuous(limits=c(0.995, 1.03))+
   scale_y_continuous(
     # Features of the first axis
-    name = "Butyrogen %",
+    name = " ",
+    labels = scales::label_percent(),
     # Add a second axis and specify its features
-    sec.axis = sec_axis(transform=~scale(., center=T), name="Butyrogen Z-Score")
-  )+
+    sec.axis = sec_axis(transform=~scale(.)+scale_factor.899, 
+                        name=" "))+
   labs(x="")+
+  facet_wrap(~"Butyrogens % (Z-score)")+
   theme_minimal()+theme(legend.position="none",
                         panel.grid.minor.x  = element_blank(),
                         panel.grid.major.x  = element_blank(),
@@ -641,49 +650,61 @@ oars.rapidaim.scores.pc.819.1.selection <- ggplot(subset(oars.rapidaim.scores.pc
                         axis.ticks.x=element_blank(),
                         strip.text = element_text(size=12),
                         strip.background = element_rect(
-                          color="black"))
-oars.rapidaim.scores.pc.819.1.selection
+                          color="white"))
+oars.rapidaim.scores.pc.899.1.selection
 
 
 # create dataframe for labels
-oars.rapidaim.scores.pc.819.2 = subset(oars.rapidaim.scores.pc.819, RS_Name != "PBS" & timing == "3M")
-oars.rapidaim.scores.pc.819.2 = oars.rapidaim.scores.pc.819.2 %>% arrange(-med.but)
+oars.rapidaim.scores.pc.883 = readRDS("./2025_06_09_oars_scores.Rds")
+oars.rapidaim.scores.pc.883 = subset(oars.rapidaim.scores.pc.883, HM == "HM0883")
+oars.rapidaim.scores.pc.883.2 = subset(oars.rapidaim.scores.pc.883, RS_Name != "PBS" & timing == "3M")
+oars.rapidaim.scores.pc.883.2 = oars.rapidaim.scores.pc.883.2 %>% arrange(-med.but)
+oars.rapidaim.scores.pc.883.2$RS_Name = factor(oars.rapidaim.scores.pc.883.2$RS_Name, levels=rs.names)
 # make non-top labels below Z-score 1
-oars.rapidaim.scores.pc.819.2$y.pos = ifelse(oars.rapidaim.scores.pc.819.2$RS_Name == "LetsDoOrganic", max(oars.rapidaim.scores.pc.819.2$med.but),
-                                          seq(from = 0.2345, 
-                                       to = min(oars.rapidaim.scores.pc.819.2$med.but),length=8))[c(1,9,2:8)]
 
-oars.rapidaim.scores.pc.819.2.selection <- ggplot(subset(oars.rapidaim.scores.pc.819.2, RS_Name != "PBS"),
-                                               #     aes(x=timing, y=log(med.but,base=2)))+
-                                               aes(x=1, y=med.but*100))+
+oars.rapidaim.scores.pc.883.2$y.pos =c(subset(oars.rapidaim.scores.pc.883.2, RS_Name %in% c("BobsRedMill", "MSPrebiotic"))$med.but,
+                                       seq(from = max(subset(oars.rapidaim.scores.pc.883.2, !RS_Name %in% c("BobsRedMill", "MSPrebiotic"))$med.but), 
+                                           to = min(oars.rapidaim.scores.pc.883.2$med.but), length=7)) 
+                                             
+
+# shift sec_axis calculated values
+scale_factor.883 = ((mean(oars.rapidaim.scores.pc.883.2$med.but)))
+
+
+oars.rapidaim.scores.pc.883.2.selection <- ggplot(oars.rapidaim.scores.pc.883.2,
+                                                  #     aes(x=timing, y=log(med.but,base=2)))+
+                                                  aes(x=1, y=med.but))+
   # add vertical bars
   geom_vline(xintercept=1, color="black")+
-  
+  # add others (including Z-score = 1)
+  geom_hline(yintercept=(mean(oars.rapidaim.scores.pc.883.2$med.but) + 1 * sd(oars.rapidaim.scores.pc.883.2$med.but)), 
+             color="red", linetype=2, alpha=0.5)+
   # add label
-  geom_text(data=oars.rapidaim.scores.pc.819.2,
-            x=1.01, aes(y=y.pos*100, label=RS_Name, color=RS_Name), hjust=0)+
-  geom_segment(data=oars.rapidaim.scores.pc.819.2,
-               x=1.0025, xend=1, aes(y=y.pos*100, yend=med.but*100, 
+  geom_text(data=oars.rapidaim.scores.pc.883.2,
+            x=1.01, aes(y=y.pos, label=RS_Name, color=RS_Name), hjust=0)+
+  geom_segment(data=oars.rapidaim.scores.pc.883.2,
+               x=1.0025, xend=1, aes(y=y.pos, yend=med.but, 
                                      color=RS_Name))+
-  geom_segment(data=oars.rapidaim.scores.pc.819.2,
-               x=1.0025, xend=1.0095, aes(y=y.pos*100, yend=y.pos*100,
+  geom_segment(data=oars.rapidaim.scores.pc.883.2,
+               x=1.0025, xend=1.0095, aes(y=y.pos, yend=y.pos,
                                           color=RS_Name))+
-  geom_label(data=subset(oars.rapidaim.scores.pc.819.2, RS_Name == selected),
-             x=1.01, aes(y=y.pos*100, label=RS_Name, color=RS_Name), hjust=0)+
+  geom_label(data=subset(oars.rapidaim.scores.pc.883.2, RS_Name == selected),
+             x=1.01, aes(y=y.pos, label=RS_Name, color=RS_Name), hjust=0)+
   # add points
-  geom_point(aes(fill=RS_Name), size=2.5, shape=21)+
-  # add others
-  geom_hline(yintercept=24.45, color="red", linetype=2, alpha=0.5)+
+  geom_point(aes(fill=RS_Name), size=3, shape=21)+
+
   scale_fill_manual(values = c(labelcolors$cols[c(1:9)]))+
   scale_color_manual(values = c(labelcolors$cols[c(1:9)]))+
   scale_x_continuous(limits=c(0.995, 1.03))+
   scale_y_continuous(
     # Features of the first axis
-    name = "Butyrogen %",
+    name = " ",
+    labels = scales::label_percent(),
     # Add a second axis and specify its features
-    sec.axis = sec_axis(transform=~scale(., center=T), name="Butyrogen Z-Score")
-  )+
+    sec.axis = sec_axis(transform= ~scale(., center=T)*0.77,
+                        name=" "))+
   labs(x="")+
+  facet_wrap(~"Butyrogens % (Z-score)")+
   theme_minimal()+theme(legend.position="none",
                         panel.grid.minor.x  = element_blank(),
                         panel.grid.major.x  = element_blank(),
@@ -691,119 +712,171 @@ oars.rapidaim.scores.pc.819.2.selection <- ggplot(subset(oars.rapidaim.scores.pc
                         axis.ticks.x=element_blank(),
                         strip.text = element_text(size=12),
                         strip.background = element_rect(
-                          color="black"))
-oars.rapidaim.scores.pc.819.2.selection
+                          color="white"))
+oars.rapidaim.scores.pc.883.2.selection
 
-oars.rapidaim.scores.pc.819.1.selection
-oars.rapidaim.scores.pc.819.2.selection
+# and without selecting
+
+oars.rapidaim.scores.pc.883.2.tie <- ggplot(oars.rapidaim.scores.pc.883.2,
+                                                  #     aes(x=timing, y=log(med.but,base=2)))+
+                                                  aes(x=1, y=med.but))+
+  # add vertical bars
+  geom_vline(xintercept=1, color="black")+
+  # add others (including Z-score = 1)
+  geom_hline(yintercept=(mean(oars.rapidaim.scores.pc.883.2$med.but) + 1 * sd(oars.rapidaim.scores.pc.883.2$med.but)), 
+             color="red", linetype=2, alpha=0.5)+
+  # add label
+  geom_text(data=oars.rapidaim.scores.pc.883.2,
+            x=1.01, aes(y=y.pos, label=RS_Name, color=RS_Name), hjust=0)+
+  geom_segment(data=oars.rapidaim.scores.pc.883.2,
+               x=1.0025, xend=1, aes(y=y.pos, yend=med.but, 
+                                     color=RS_Name))+
+  geom_segment(data=oars.rapidaim.scores.pc.883.2,
+               x=1.0025, xend=1.0095, aes(y=y.pos, yend=y.pos,
+                                          color=RS_Name))+
+  #geom_label(data=subset(oars.rapidaim.scores.pc.883.2, RS_Name == selected),
+  #           x=1.01, aes(y=y.pos*100, label=RS_Name, color=RS_Name), hjust=0)+
+  # add points
+  geom_point(aes(fill=RS_Name), size=3, shape=21)+
+  scale_fill_manual(values = c(labelcolors$cols[c(1:9)]))+
+  scale_color_manual(values = c(labelcolors$cols[c(1:9)]))+
+  scale_x_continuous(limits=c(0.995, 1.03))+
+  scale_y_continuous(
+    # Features of the first axis
+    name = " ",
+    labels = scales::label_percent(),
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(transform= ~scale(., center=T)*0.77,
+                        name=" "))+
+  labs(x="")+
+  facet_wrap(~"Butyrogens % (Z-score)")+
+  theme_minimal()+theme(legend.position="none",
+                        panel.grid.minor.x  = element_blank(),
+                        panel.grid.major.x  = element_blank(),
+                        axis.text.x=element_blank(),
+                        axis.ticks.x=element_blank(),
+                        strip.text = element_text(size=12),
+                        strip.background = element_rect(
+                          color="white"))
+oars.rapidaim.scores.pc.883.2.tie
 
 # :: PCoA -------------------------------------------------------------
 
-# and a PCoA for HM0819 0M
-oars.rapidaim.scores.pc.819 = readRDS("./2025_06_09_oars_phyloseq.Rds")
-oars.rapidaim.scores.pc.819 = phyloseq::subset_samples(oars.rapidaim.scores.pc.819, HM == "0819.03")
-oars.rapidaim.scores.pc.819 = phyloseq::merge_phyloseq(oars.rapidaim.scores.pc.819,
+# and a PCoA for HM0883 3M
+controls <- readRDS("./oars_performance_characteristics_data/controls_nonibd-dc-cloud_n83.rds")
+
+oars.rapidaim.scores.pc.883 = readRDS("./2025_06_09_oars_phyloseq.Rds")
+oars.rapidaim.scores.pc.883 = phyloseq::subset_samples(oars.rapidaim.scores.pc.883, HM == "0883.02")
+oars.rapidaim.scores.pc.883 = phyloseq::merge_phyloseq(oars.rapidaim.scores.pc.883,
                                                     controls)
-oars.rapidaim.scores.pc.819 <- phyloseq::transform_sample_counts(oars.rapidaim.scores.pc.819, function(x) 100 * x/sum(x)) # TSS scale library sizes to 100%
-oars.rapidaim.scores.pc.819.bray = phyloseq::ordinate(oars.rapidaim.scores.pc.819, "PCoA", "bray")
-oars.rapidaim.scores.pc.819.bray = oars.rapidaim.scores.pc.819.bray$vectors[,c(1,2)] %>% data.frame() %>%
-  mutate(Sample = rownames( oars.rapidaim.scores.pc.819.bray$vectors))
-oars.rapidaim.scores.pc.819.bray = merge(oars.rapidaim.scores.pc.819.bray,
-                                      phyloseq::sample_data(oars.rapidaim.scores.pc.819) %>% data.frame(),
+oars.rapidaim.scores.pc.883 <- phyloseq::transform_sample_counts(oars.rapidaim.scores.pc.883, function(x) 100 * x/sum(x)) # TSS scale library sizes to 100%
+oars.rapidaim.scores.pc.883.bray = phyloseq::ordinate(oars.rapidaim.scores.pc.883, "PCoA", "bray")
+oars.rapidaim.scores.pc.883.bray = oars.rapidaim.scores.pc.883.bray$vectors[,c(1,2)] %>% data.frame() %>%
+  mutate(Sample = rownames( oars.rapidaim.scores.pc.883.bray$vectors))
+oars.rapidaim.scores.pc.883.bray = merge(oars.rapidaim.scores.pc.883.bray,
+                                      phyloseq::sample_data(oars.rapidaim.scores.pc.883) %>% data.frame(),
                                       by="Sample")
-oars.rapidaim.scores.pc.819.bray$RS_Name = factor(oars.rapidaim.scores.pc.819.bray$RS_Name, levels=rs.names.pbs)
-oars.rapidaim.scores.pc.819.bray$type = ifelse(!is.na(oars.rapidaim.scores.pc.819.bray$source), "RapidAIM", "Controls")
+oars.rapidaim.scores.pc.883.bray$RS_Name = factor(oars.rapidaim.scores.pc.883.bray$RS_Name, levels=rs.names.pbs)
+oars.rapidaim.scores.pc.883.bray$type = ifelse(!is.na(oars.rapidaim.scores.pc.883.bray$source), "RapidAIM", "Controls")
 # take median
-oars.rapidaim.scores.pc.819.bray = oars.rapidaim.scores.pc.819.bray %>%
+oars.rapidaim.scores.pc.883.bray = oars.rapidaim.scores.pc.883.bray %>%
   group_by(type, RS_Name) %>%
   mutate(med.1 = ifelse(type == "RapidAIM", median(Axis.1), Axis.1)) %>%
   mutate(med.2 = ifelse(type == "RapidAIM", median(Axis.2), Axis.2)) %>%
   dplyr::select(type, RS_Name, med.1, med.2) %>% distinct()
 # add medoid of controls
-oars.rapidaim.scores.pc.819.bray.medoid = oars.rapidaim.scores.pc.819.bray %>%
+oars.rapidaim.scores.pc.883.bray.medoid = oars.rapidaim.scores.pc.883.bray %>%
   subset(type == "Controls") %>%
   mutate(medoid.1 = median(med.1)) %>%
   mutate(medoid.2 = median(med.2)) %>% dplyr::select(medoid.1, medoid.2) %>% distinct()
 
-oars.rapidaim.scores.pc.819.1.pcoa = ggplot()+
-  geom_point(data = subset(oars.rapidaim.scores.pc.819.bray, type == "RapidAIM" & RS_Name %in% rs.names),
+oars.rapidaim.scores.pc.883.1.pcoa = ggplot()+
+  geom_point(data = subset(oars.rapidaim.scores.pc.883.bray, type == "RapidAIM" & RS_Name %in% rs.names),
              aes(x=med.1, y=med.2, fill = RS_Name), shape=21, size=2.5)+
     # draw distance
   geom_segment(aes(
-    x=subset(oars.rapidaim.scores.pc.819.bray, RS_Name == "Novelose330")$med.1,
-    xend=oars.rapidaim.scores.pc.819.bray.medoid$medoid.1,
-    y=subset(oars.rapidaim.scores.pc.819.bray, RS_Name == "Novelose330")$med.2,
-    yend=oars.rapidaim.scores.pc.819.bray.medoid$medoid.2),
-    color = labelcolors$cols[6],
+    x=subset(oars.rapidaim.scores.pc.883.bray, RS_Name == "BobsRedMill")$med.1,
+    xend=oars.rapidaim.scores.pc.883.bray.medoid$medoid.1,
+    y=subset(oars.rapidaim.scores.pc.883.bray, RS_Name == "BobsRedMill")$med.2,
+    yend=oars.rapidaim.scores.pc.883.bray.medoid$medoid.2),
+    color = labelcolors$cols[1],
     linetype=2, alpha=0.9)+
   geom_segment(aes(
-    x=subset(oars.rapidaim.scores.pc.819.bray, RS_Name == "Versafibe1490")$med.1,
-    xend=oars.rapidaim.scores.pc.819.bray.medoid$medoid.1,
-    y=subset(oars.rapidaim.scores.pc.819.bray, RS_Name == "Versafibe1490")$med.2,
-    yend=oars.rapidaim.scores.pc.819.bray.medoid$medoid.2),
-    color = labelcolors$cols[9],
+    x=subset(oars.rapidaim.scores.pc.883.bray, RS_Name == "MSPrebiotic")$med.1,
+    xend=oars.rapidaim.scores.pc.883.bray.medoid$medoid.1,
+    y=subset(oars.rapidaim.scores.pc.883.bray, RS_Name == "MSPrebiotic")$med.2,
+    yend=oars.rapidaim.scores.pc.883.bray.medoid$medoid.2),
+    color = labelcolors$cols[1],
     linetype=2, alpha=0.9)+
   # draw controls
-  stat_density_2d(data = subset(oars.rapidaim.scores.pc.819.bray, type == "Controls"),
-                  geom = "polygon", aes(x=med.1, y=med.2,alpha = ..level..), fill = "grey")+
-  geom_point(data = subset(oars.rapidaim.scores.pc.819.bray, type == "Controls"),
-             aes(x=med.1, y=med.2), shape=21, fill = "white", size=2)+
+  stat_density_2d(data = subset(oars.rapidaim.scores.pc.883.bray, type == "Controls"),
+                  geom = "polygon", aes(x=med.1, y=med.2,alpha = ..level..), fill = "grey",
+                  adjust=1.1)+
+  geom_point(data = subset(oars.rapidaim.scores.pc.883.bray, type == "Controls"),
+             aes(x=med.1, y=med.2), shape=21, fill = "black", color="white", size=2)+
   scale_fill_manual(values=labelcolors$cols[c(1:9)])+
-  theme_classic()+theme(legend.position="none")+
-  labs(x="Axis.1", y="Axis.2")
-oars.rapidaim.scores.pc.819.1.pcoa
+  theme_classic()+theme(legend.position="none",
+                        strip.text = element_text(size=12),
+                        strip.background = element_rect(color="white"))+
+  facet_wrap(~"PCoA + non-IBD microbiomes (Bray-Curtis)")+
+  labs(x="Axis 1", y="\nAxis 2")
+oars.rapidaim.scores.pc.883.1.pcoa
 # remember: it's MEDIAN DISTANCE to controls; not distance to medoid
+oars.rapidaim.scores.pc.883.2.selection
+oars.rapidaim.scores.pc.899.1.selection
 
 # plot bar/stacked plot for distances
-oars.rapidaim.scores.pc.819.1 = oars.rapidaim.scores.pc.819.1 %>% arrange(med.dis)
-oars.rapidaim.scores.pc.819.1$y.pos.dis = seq(from = min(oars.rapidaim.scores.pc.819.1$med.dis), 
-                                       to = max(oars.rapidaim.scores.pc.819.1$med.dis),length=9)
+oars.rapidaim.scores.pc.883.2 = oars.rapidaim.scores.pc.883.2 %>% arrange(med.dis)
+oars.rapidaim.scores.pc.883.2$y.pos.dis = seq(from = min(oars.rapidaim.scores.pc.883.2$med.dis), 
+                                       to = max(oars.rapidaim.scores.pc.883.2$med.dis),length=9)
 
-oars.rapidaim.scores.pc.819.1.distance.plot <- ggplot(subset(oars.rapidaim.scores.pc.819.1, RS_Name != "PBS"),
+oars.rapidaim.scores.pc.883.2.distance.plot <- ggplot(subset(oars.rapidaim.scores.pc.883.2, RS_Name != "PBS"),
                                                #     aes(x=timing, y=log(med.but,base=2)))+
                                                aes(x=1, y=med.dis))+
   # add vertical bars
   geom_vline(xintercept=1, color="black")+
   
   # add label
-  geom_text(data=oars.rapidaim.scores.pc.819.1,
-            x=1.01, aes(y=y.pos.dis, label=RS_Name, color=RS_Name), hjust=0)+
-  geom_segment(data=oars.rapidaim.scores.pc.819.1,
+  geom_text(data=oars.rapidaim.scores.pc.883.2,
+            x=1.01, aes(y=y.pos.dis, label=RS_Name, color=RS_Name), hjust=0,
+            size=3)+
+  geom_segment(data=oars.rapidaim.scores.pc.883.2,
                x=1.0025, xend=1, aes(y=y.pos.dis, yend=med.dis, 
                                      color=RS_Name))+
-  geom_segment(data=oars.rapidaim.scores.pc.819.1,
+  geom_segment(data=oars.rapidaim.scores.pc.883.2,
                x=1.0025, xend=1.0095, aes(y=y.pos.dis, yend=y.pos.dis,
                                           color=RS_Name))+
-  geom_label(data=subset(oars.rapidaim.scores.pc.819.1, RS_Name == selected),
-             x=1.01, aes(y=y.pos.dis, label=RS_Name, color=RS_Name), hjust=0)+
+  geom_label(data=subset(oars.rapidaim.scores.pc.883.2, RS_Name == selected),
+             x=1.01, aes(y=y.pos.dis, label=RS_Name, color=RS_Name), hjust=0,
+             size=3)+
   # add points
-  geom_point(aes(fill=RS_Name), size=2.5, shape=21)+
-  # add Versafibe again
-  geom_point(data=subset(oars.rapidaim.scores.pc.819.1, RS_Name %in% c("Versafibe1490", "Novelose330")),
-             aes(fill=RS_Name), size=2.5, shape=21)+
+  geom_point(aes(fill=RS_Name), size=2, shape=21)+
   # add others
   scale_fill_manual(values = c(labelcolors$cols[c(1:9)]))+
   scale_color_manual(values = c(labelcolors$cols[c(1:9)]))+
   scale_x_continuous(limits=c(0.995, 1.03))+
-  labs(x="", y="Median Dissimilarity to non-IBD")+
+  labs(x="", y=" ")+
+  facet_wrap(~"Dissimilarity to non-IBD")+
   theme_minimal()+theme(legend.position="none",
                         panel.grid.minor.x  = element_blank(),
                         panel.grid.major.x  = element_blank(),
                         axis.text.x=element_blank(),
+                        axis.text.y=element_text(size=8),
                         axis.ticks.x=element_blank(),
-                        strip.text = element_text(size=12),
-                        strip.background = element_rect(
-                          color="black"))
-oars.rapidaim.scores.pc.819.1.distance.plot
+                        strip.text = element_text(size=10),
+                        strip.background = element_rect(color="white"))
+oars.rapidaim.scores.pc.883.2.distance.plot
 
 
-
-oars.rapidaim.scores.pc.819.1.selection+
-oars.rapidaim.scores.pc.819.1.pcoa+
-oars.rapidaim.scores.pc.819.1.distance.plot
-
-oars.rapidaim.scores.pc.819.2.selection
-
+(oars.rapidaim.scores.pc.899.1.selection+
+  (oars.rapidaim.scores.pc.883.1.pcoa + 
+  inset_element(oars.rapidaim.scores.pc.883.2.distance.plot,
+                left = 0.003, bottom = 0.005, 
+                right = 0.52, top = 0.55))+
+  oars.rapidaim.scores.pc.883.2.selection+
+    patchwork::plot_layout(nrow=1, widths=c(1,1.6,1))) %>%
+  ggsave(filename="./oars_plots/oars_rs_selection.pdf",
+         width=12, height=4.5, device = cairo_pdf)
 
 # :: pH -------------------------------------------------------------------
 
@@ -2316,7 +2389,7 @@ oars_scfa_ph_threshold.plot/
 (oars.rapidaim.scores.pc.selection.plot+ 
   oars.rapidaim.scores.pc.frequencies.plot+
   patchwork::plot_layout(widths=c(4,1))) %>%
-  ggsave(filename="./oars_plots/oars_1_rs_selections.pdf",
+  ggsave(filename="./oars_plots_deidentified/oars_1_rs_selections_DI.pdf",
          width=15, height=7, device = cairo_pdf)
 
 (oars.rapidaim.scores.pc.ph.selection.plot+ 

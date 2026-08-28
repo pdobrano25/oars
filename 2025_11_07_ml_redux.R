@@ -10,7 +10,7 @@
 
 # save.image(file =  "./2025_11_07_oars_ml_env.Rdata")
 
-load(file =  "./ml_git_data/ml_loocv_data/2025_11_07_oars_ml_env.Rdata")
+load(file =  "~/Documents/PhD/git_ml_archfolder/ml_git_data/ml_loocv_data/2025_11_07_oars_ml_env.Rdata")
 
 
 library("ggplot2"); library("ggridges"); library("dplyr"); library("tidyverse")
@@ -184,7 +184,7 @@ ml.rapidaim.ph.plot <-  ggplot(ml.target.data %>% subset(variable == "delta_pH")
                         strip.background = element_rect(
                           color="black"))+
   facet_wrap(~"Measured Δ pH")+
-  labs(x=NULL, y="Measured Δ pH versus PBS")
+  labs(x=NULL, y="Measured Δ pH")
 ml.rapidaim.ph.plot
 # good
 
@@ -567,15 +567,24 @@ lasso_coefs_sparse = coef(cv_lasso, s = "lambda.1se") %>% as.matrix() %>% as.dat
   arrange(coef)
 
 # plot features
+bold_labels = c("g__Bifidobacterium_388775_s__faecale",
+                "g__Ruminococcus_E_s__bromii_B")
+highlight = function(x, pat, color="black", family="") {
+  ifelse(grepl(pat, x), glue("<b style='font-family:{family}; color:{color}'>{x}</b>"), x)
+}
+library("glue"); library("ggtext")
 lasso_coefs_plot = ggplot(lasso_coefs %>%
          mutate(direction = gsub(1, "Positive", gsub(-1, "Negative",  sign(coef)))) %>%
-         mutate(direction = factor(direction, levels=rev(c("Negative", "Positive")))),
+         mutate(direction = factor(direction, levels=rev(c("Negative", "Positive")))) %>%
+         mutate(feature = ifelse(feature %in% bold_labels, paste("**", feature, "**", sep=""), feature)),
        aes(y=reorder(feature,coef), x=abs(coef)))+
   geom_vline(xintercept=0, linetype=2, linewidth=0.2)+
   geom_bar(stat="identity",  aes(fill= (coef)), 
            color="black", linewidth=0.4)+
   scale_fill_gradient2(low="blue", mid="white", high="red")+
-  theme_classic(base_size = 16)+theme(legend.position="none")+
+  scale_y_discrete(labels= function(x) highlight(x, paste(bold_labels, collapse="|"), "black"))+
+  theme_classic(base_size = 16)+theme(legend.position="none",
+                                      axis.text.y=element_markdown())+
   facet_grid(direction~., scales="free_y", space="free")+
   labs(x="Abs. LASSO Coefficient", y=NULL)
 lasso_coefs_plot
@@ -615,7 +624,7 @@ wilcox.test(subset(lasso_ratio, timepoint == "baseline")$ratio,
             subset(lasso_ratio, timepoint == "RS")$ratio, paired=T) # p 3.5e-16
 wilcox.test(subset(lasso_ratio, timepoint == "baseline")$ratio.sparse,
             subset(lasso_ratio, timepoint == "RS")$ratio.sparse, paired=T) # p 2e-9
-# ratio is optimal
+# ratio is optimal (i.e. min lambda)
 
 # save these features
 lasso_coefs$feature
@@ -645,7 +654,7 @@ lasso_scores_plot = lasso_ratio %>% dplyr::select(subject, RS_Name, study, group
   theme_classic(base_size = 16)+theme(axis.text.y = element_blank(),
                         axis.ticks.y = element_blank(),
                         legend.position="none")+
-  labs(x="Subject", y=expression(Log[2]*FC~RS~Response~Ratio))
+  labs(x="\nSubject", y=expression(Log[2]*FC~RS~Response~Ratio))
 lasso_scores_plot
 
 
@@ -1126,6 +1135,41 @@ ml.rf.regression.oob.oars.ph.pbs.mean = ml.rf.regression.oob.oars.ph.pbs %>%
 
 # :: :: PLOT: Scatterplots ------------------------------------------------
 
+# bootstrap p values
+
+ml.rf.bootstrapped.cor = do.call(rbind, lapply(rs.names, function(x){
+  print(x)
+  # subset to RS of interest
+  data.subset = subset(ml.rf.regression.oob.oars.ph.pbs, RS_Name == x)
+  # bootstrap 999 times
+  subset.cor = do.call(rbind, lapply(c(1:15), function(y){
+    set.seed(y)
+    data.subset = data.subset %>%
+      subset(iter == y)
+    # calculate correlation
+    cor.true = cor.test(data.subset$true.delta,
+             data.subset$pred.delta)$estimate
+    cor.shadow = cor.test(data.subset$true.delta,
+                          data.subset$shadow.delta)$estimate
+    # record
+    data.frame(RS_Name = x,
+               iter = y,
+               cor.true = cor.true,
+               cor.shadow = cor.shadow)
+  }))
+  # output = RS + p val
+  wilcox.result = wilcox.test(subset.cor$cor.true,
+              subset.cor$cor.shadow)
+  data.frame(RS_Name = x,
+             cor = cor.test(data.subset$true.delta,
+                            data.subset$pred.delta)$estimate,
+             pval = wilcox.result$p.value)
+  }))
+ml.rf.bootstrapped.cor = ml.rf.bootstrapped.cor %>%
+  mutate(padj = p.adjust(pval, method="bonferroni")) %>%
+  mutate(RS_Name = factor(RS_Name, levels=rs.names))
+ml.rf.bootstrapped.cor
+
 ml.rf.regression.oob.oars.ph.pbs.plot.neat = ggplot(ml.rf.regression.oob.oars.ph.pbs %>%
          subset(RS_Name != "PBS") %>%
          mutate(RS_Name = factor(RS_Name, levels=rs.names)),
@@ -1142,10 +1186,15 @@ ml.rf.regression.oob.oars.ph.pbs.plot.neat = ggplot(ml.rf.regression.oob.oars.ph
   geom_hline(yintercept=-1.27, linetype=2, linewidth=0.2)+
   geom_vline(xintercept=-1.27, linetype=2, linewidth=0.2)+
   scale_y_continuous(limits=c(-2, 0.25))+
-  ggpubr::stat_cor(method="spearman",aes(label = ..r.label..), size=3)+
+  geom_text(data=ml.rf.bootstrapped.cor,
+            aes(x=-2.5, y = 0.10, label=
+                  ifelse(padj < 0.001, paste("ρ: ", round(cor, digits=2), "; 𝘱 < 0.001", sep=""),
+                         paste("ρ: ", round(cor, digits=2), "; 𝘱: ", round(padj, digits=3), sep=""))),
+            size=2.5, hjust=0.1)+
   scale_fill_manual(values=labelcolors$cols)+
   scale_color_manual(values=labelcolors$cols)+
-  theme_classic()+theme(legend.position="none")+
+  theme_classic()+theme(legend.position="none",
+                        strip.text = element_text(size=10))+
   facet_wrap(~RS_Name)+
   labs(x="Measured Δ pH",
        y="Predicted Δ pH")
@@ -1947,12 +1996,13 @@ top.model.preds.plot = ggplot(top.model.preds %>%
   #                                         label=ifelse(sig == "***", "*", "")), y=Inf, vjust=1.4, size=6)+
   theme_classic(base_size = 16)+theme(legend.position="none",
                         axis.text.x=element_text(angle=45,vjust=1, hjust=1),
+                       # axis.text.x=element_blank(),
                         legend.title = element_text(hjust=0.5),
                         strip.text = element_text(size=16),
                         strip.background = element_rect(
                           color="black"))+
   facet_wrap(~"Predicted Δ pH")+
-  labs(x=NULL, y="Predicted Δ pH versus PBS")
+  labs(x=NULL, y="Predicted Δ pH")
 top.model.preds.plot
 
 # plot optimal RS (lowest pH)
@@ -1994,7 +2044,7 @@ top.model.preds.cor.plot = ggplot(top.model.preds %>%
                         strip.background = element_rect(
                           color="black"))+
   facet_wrap(~"Minimum Δ pH RS")+
-  labs(x="Measured Δ pH versus PBS", y="Predicted Δ pH versus PBS")
+  labs(x="Measured Δ pH", y="Predicted Δ pH")
 top.model.preds.cor.plot
 
 top.model.preds.plot+
@@ -2372,7 +2422,7 @@ ml.sample.size.curve.lm.values.plot = ggplot(ml.sample.size.curve.lm.values %>%
         legend.position="none",
         strip.background = element_blank(),
         strip.text = element_blank())+
-  labs(x=NULL, y="Extrapolated Sample Size")
+  labs(x=NULL, y="Sample Size")
 
 ml.sample.size.curve.linear.ldo+
 ml.sample.size.curve.lm.values.plot
@@ -2583,9 +2633,9 @@ ml.sample.size.curve.mse.penalty.plot.2 = do.call(rbind, lapply(c(2,3,4,4.07, 5,
   dplyr::select(cor.lambda, p.lambda, penalty, sample.size, cor.delta) %>% distinct() %>%
   ggplot(aes(x=sample.size, y=cor.delta))+
   geom_point(shape=21)+
-  geom_hline(yintercept=0, linetype=2, color="red")+
   geom_smooth(method="lm", color="orange")+
-  ggpubr::stat_cor()+
+  geom_hline(yintercept=0, linetype=2, color="red")+
+  ggpubr::stat_cor(vjust=0.7, size=3)+
   #geom_vline(xintercept=16.75, linetype=2, color="red")+
   theme_classic()+
   facet_wrap(~penalty)+
@@ -2679,7 +2729,7 @@ ml.sample.size.curve.mse.scores.plot = ggplot(ml.sample.size.curve.mse.scores %>
 ml.sample.size.curve.mse.scores.plot
 
 # decelerates after ~n=400
-
+# 10% increase ~n=300
 
 # :: Tabulate performance -------------------------------------------------
 
@@ -2795,13 +2845,28 @@ data.frame(x = seq(-1, 1, by=0.01)) %>%
 ## TOP
 (ml.rapidaim.ph.plot+
    patchwork::free(dbrda_model_ph_plot, type="label")+
-   patchwork::free(ml.rf.regression.oob.oars.ph.pbs.plot.neat, type="label")) %>%
+   patchwork::free(ml.rf.regression.oob.oars.ph.pbs.plot.neat, type="label")+
+   patchwork::plot_spacer()+
+   patchwork::plot_layout(nrow=1)) %>%
   ggsave(
-    filename="../../ml_plots/oars_ml_plot_top.pdf",
-    width=14,
-    height=5,
+    filename="./oars_plots/2026_02_06_oars_ml_plot_top.pdf",
+    width=16,
+    height=4.4,
     units="in",
     device=cairo_pdf)
+
+make_bold_names <- function(mat, rc_fun, rc_names) {
+  bold_names <- rc_fun(mat)
+  ids <- rc_names %>% match(rc_fun(mat))
+  ids %>%
+    walk(
+      function(i)
+        bold_names[i] <<-
+        bquote(bold(.(rc_fun(mat)[i]))) %>%
+        as.expression()
+    )
+  bold_names
+}
 
 reshape2::acast(subset(ml.rf.regression.oob.oars.ph.pbs.importances.mean.sig, type == "real"),
                 RS_Name ~ feature, value.var="adj.imp") %>%
@@ -2810,13 +2875,18 @@ reshape2::acast(subset(ml.rf.regression.oob.oars.ph.pbs.importances.mean.sig, ty
                      annotation_col = data.frame(RS = rs.names.pbs)%>% `rownames<-`(rs.names.pbs),
                      annotation_colors = list(RS = c(labelcolors.rs, "PBS" = "black")),
                      annotation_legend = F,
+                     labels_row = make_bold_names(reshape2::acast(subset(ml.rf.regression.oob.oars.ph.pbs.importances.mean.sig, type == "real"),
+                                                                  RS_Name ~ feature, value.var="adj.imp") %>%
+                                                    t(),
+                                                  rownames, c("g__Ruminococcus_E_s__bromii_B",
+                                                              "g__Blautia_A_141781_s__wexlerae")),
                      # display_numbers = ml.rapidaim.data.ph.lfc.sig.mat.stars[,rs.names],
                      fontsize_number = 10,number_color="white",
                      breaks=c(seq(min(na.omit(ml.rf.regression.oob.oars.ph.pbs.importances.mean.sig$adj.imp)), 0, length.out=ceiling(100/2) + 1), 
                               seq(max(na.omit(ml.rf.regression.oob.oars.ph.pbs.importances.mean.sig$adj.imp))/100, max(na.omit(ml.rf.regression.oob.oars.ph.pbs.importances.mean.sig$adj.imp)), length.out=floor(100/2))),
                      border_color = "white") %>%
   ggsave(
-    filename="../../ml_plots/oars_ml_plot_heatmap.pdf",
+    filename="./oars_plots/2026_02_06_oars_ml_plot_heatmap.pdf",
     width=6,
     height=5,
     units="in",
@@ -2853,7 +2923,7 @@ cowplot::plot_grid(bottom.1,
                    bottom.4,
                    nrow=1, rel_widths=c(3,2,1)) %>%
   ggsave(
-    filename="./ml_plots/oars_ml_plot_bottom.pdf",
+    filename="./oars_plots/2026_02_06_oars_ml_plot_bottom.pdf",
     width=33,
     height=10,
     units="in",
@@ -2888,9 +2958,9 @@ r.callidus.plot %>%
   ml.sample.size.curve.mse.penalty.plot.2+ patchwork::plot_layout(widths=c(1,1)))+
   patchwork::plot_layout(nrow=2, heights=c(1,3))) %>%
   ggsave(
-    filename="../../ml_plots/oars_ml_supp_calibration.pdf",
-    width=14,
-    height=10,
+    filename="./oars_plots/2026_02_06_oars_ml_supp_calibration.pdf",
+    width=11,
+    height=8,
     units="in",
     device=cairo_pdf)
 

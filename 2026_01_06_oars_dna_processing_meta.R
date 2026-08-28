@@ -1448,7 +1448,7 @@ oars.mpx.map$standard.name = gsub("_", "-", oars.mpx.map$standard.name)
 oars.mpx.map.plates = oars.mpx.map %>%
   group_by(standard.name) %>%
   #subset(standard.name == "HM0878-STL-11")%>%
-  mutate(plate = str_c(plate, collapse = "_")) %>%
+  mutate(plate = stringr::str_c(plate, collapse = "_")) %>%
   dplyr::select(plate, standard.name) %>% distinct()
 
 # >> MPX QC ---------------------------------------------------------------
