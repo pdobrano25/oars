@@ -15,7 +15,7 @@ Code and analyses for each section of the manuscript:
 
 ---
 
-*Data processing*: **[2026_01_06_oars_dna_processing](https://github.com/pdobrano25/oars/blob/main/2026_01_06_oars_dna_processing.R)**
+*Data processing*: **[2026_01_06_oars_dna_processing_meta](https://github.com/pdobrano25/oars/blob/main/2026_01_06_oars_dna_processing_meta.R)**
 
 
 Prepares FFQ data (with minimal analyses), 16S data variables (e.g. butyrogens, predicted microbial load, functional redundancy), metagenomic data, metaproteomic data (e.g. proteins collapsed to functions), and metabolomic data. Output serves as input for most analysis scripts.
