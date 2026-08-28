@@ -26,7 +26,7 @@ Prepares FFQ data (with minimal analyses), 16S data variables (e.g. butyrogens, 
 
 
 Main analysis including group-level and response-level clinical, ASV, metagenomics, metaproteomics, and metabolomics; conducts conserved- and variable-response analyses, and correlations with fecal calprotectin.
-Crucially, identifies fermentation response groups. Also lists specific correlations described in text.
+Identifies fermentation response groups. Also lists specific correlations described in text.
 
 ---
 
