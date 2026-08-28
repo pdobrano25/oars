@@ -1,4 +1,4 @@
-***Ex vivo fermentation predicts reduced biochemical inflammation with personalied resistant starch in children with IBD.***
+***Ex vivo fermentation predicts reduced biochemical inflammation with personalized resistant starch in children with IBD.***
 
 Peter Dobranowski
 Version 2026_01_19
